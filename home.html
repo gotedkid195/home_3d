@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home</title>
+</head>
+<style>
+  *,
+  *::after,
+  *::before {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    outline: none;
+  }
+
+  body {
+    overflow: hidden;
+    background-color: #ffffff;
+    cursor: grab;
+  }
+
+  .webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r124/three.min.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.126.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://www.unpkg.com/@eohjsc/era-widget@1.1.3/src/index.js"></script>
+
+<body>
+  <canvas class="webgl"></canvas>
+</body>
+<script>
+  const canvas = document.querySelector(".webgl");
+  const scene = new THREE.Scene();
+  const textureLoader = new THREE.TextureLoader();
+  const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+  };
+
+  // Base camera
+  const camera = new THREE.PerspectiveCamera(
+    45,
+    sizes.width / sizes.height,
+    0.1,
+    100
+  );
+  camera.position.x = 18;
+  camera.position.y = 10;
+  camera.position.z = 20;
+  scene.add(camera);
+
+  // Controls
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.enableZoom = true;
+  controls.enablePan = false;
+  controls.minDistance = 10;
+  controls.maxDistance = 20;
+  controls.minPolarAngle = Math.PI / 4;
+  controls.maxPolarAngle = Math.PI / 2.25;
+  controls.minAzimuthAngle = -Math.PI / 16;
+  controls.maxAzimuthAngle = Math.PI / 2;
+  // controls.autoRotate = true;
+
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true,
+    alpha: true
+  });
+
+  renderer.setSize(sizes.width, sizes.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // Materials
+  const bakedTexture = textureLoader.load(
+    "https://rawcdn.githack.com/ricardoolivaalonso/ThreeJS-Room01/98fd8d7909308ec03a596928a394bb25ed9239f1/baked.jpg"
+  );
+  bakedTexture.flipY = false;
+  bakedTexture.encoding = THREE.sRGBEncoding;
+
+  const bakedMaterial = new THREE.MeshBasicMaterial({
+    map: bakedTexture,
+    side: THREE.DoubleSide
+  });
+
+  const fontLoader = new THREE.FontLoader();
+
+  // Utility function to create and add text meshes
+  const createTextMesh = (text, position, rotation, fontUrl, size = 0.3, color = 0x000000) => {
+    return new Promise((resolve) => {
+      fontLoader.load(fontUrl, (font) => {
+        const textGeometry = new THREE.TextGeometry(text, {
+          font: font,
+          size: size,
+          height: 0.1,
+          curveSegments: 12,
+          bevelEnabled: false,
+        });
+
+        const textMaterial = new THREE.MeshBasicMaterial({ color });
+        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+        textMesh.position.set(...position);
+        textMesh.rotation.set(...rotation);
+        scene.add(textMesh);
+        resolve(textMesh);
+      });
+    });
+  };
+
+  let screenTV;
+  let textMesh2, textMesh3, textMesh4;
+
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    "https://rawcdn.githack.com/ricardoolivaalonso/ThreeJS-Room01/98fd8d7909308ec03a596928a394bb25ed9239f1/THREEJS2.glb",
+    async (gltf) => {
+      const model = gltf.scene;
+      screenTV = model.getObjectByName('Screen');
+      model.traverse((child) => (child.material = bakedMaterial));
+      scene.position.set(0, -2, 0);
+      scene.add(model);
+
+      // Create text meshes
+      await createTextMesh('Information board', [-3, 4.5, 10.5], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', 0.5);
+      await createTextMesh('Temperature:', [-3, 3.5, 10], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+      await createTextMesh('Humidity:', [-3, 3, 10], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+      await createTextMesh('Light status:', [-3, 2.5, 10], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+      textMesh2 = await createTextMesh('', [-3, 3.5, 7], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+      textMesh3 = await createTextMesh('', [-3, 3, 7], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+      textMesh4 = await createTextMesh('', [-3, 2.5, 7], [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json');
+    }
+  );
+
+  window.addEventListener("resize", () => {
+    sizes.width = window.innerWidth;
+    sizes.height = window.innerHeight;
+    camera.aspect = sizes.width / sizes.height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(sizes.width, sizes.height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  });
+  // Animation
+  const tick = () => {
+    controls.update();
+    renderer.render(scene, camera);
+    window.requestAnimationFrame(tick);
+  };
+
+  tick();
+
+  // Throttle function to ensure func is called at most once every delay period
+  const throttle = (func, delay) => {
+    let lastCall = 0;
+    return function (...args) {
+      const now = new Date().getTime();
+      if (now - lastCall < delay) return;
+      lastCall = now;
+      return func.apply(this, args);
+    };
+  };
+
+  const updateTextMesh = (meshRef, text, position) => {
+    if (meshRef.mesh) {
+      scene.remove(meshRef.mesh);
+    }
+    createTextMesh(text, position, [0, 1.6, 0], 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json')
+      .then(newMesh => {
+        meshRef.mesh = newMesh;
+      });
+  };
+
+  // Helper function to wrap mesh references in an object
+  const createMeshRef = (mesh) => ({ mesh });
+
+  // Wrap your text meshes in references
+  const textMeshRef2 = createMeshRef(textMesh2);
+  const textMeshRef3 = createMeshRef(textMesh3);
+  const textMeshRef4 = createMeshRef(textMesh4);
+
+  // Update text meshes based on values
+  const updateTextMesh2 = throttle((value) => updateTextMesh(textMeshRef2, `${value} oC`, [-3, 3.5, 7]), 3000);
+  const updateTextMesh3 = throttle((value) => updateTextMesh(textMeshRef3, `${value} %`, [-3, 3, 7]), 2000);
+  const updateTextMesh4 = throttle((value) => updateTextMesh(textMeshRef4, value, [-3, 2.5, 7]), 2000);
+
+  // Create a raycaster and a vector to store mouse coordinates
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  // Function to handle clicks
+  async function onClick(event) {
+    // Update the mouse coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update the raycaster with the camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check for intersections with the screenTV object
+    const intersects = raycaster.intersectObject(screenTV);
+
+    // If the screenTV was clicked
+    if (intersects.length > 0) {
+      // Change the color of screenTV
+      if (valueLed) {
+        await triggerActionOff();
+        // screenTV.material.color.set(0x233654);
+
+      } else {
+        await triggerActionOn();
+        // screenTV.material.color.set(0xf2f5fa);
+      }
+    }
+  };
+
+  // Add the event listener for the click event
+  window.addEventListener('click', onClick);
+
+  const sleep = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  let widgetConfiguration = null;
+  let value;
+  let configTemp, configHumi, configLed;
+  let valueTemp, valueHumi, valueLed;
+  let newStatusLed;
+
+  const eraWidget = new EraWidget();
+  eraWidget.init({
+    needRealtimeConfigs: true,
+    needHistoryConfigs: true,
+    needActions: true,
+    maxRealtimeConfigsCount: 3,
+    maxHistoryConfigsCount: 1,
+    maxActionsCount: 2,
+    minRealtimeConfigsCount: 0,
+    minHistoryConfigsCount: 0,
+    minActionsCount: 0,
+    onConfiguration: (configuration) => {
+      configTemp = configuration.realtime_configs[0];
+      configHumi = configuration.realtime_configs[1];
+      configLed = configuration.realtime_configs[2];
+      widgetConfiguration = configuration;
+    },
+    onValues: async (values) => {
+      valueTemp = values[configTemp.id].value;
+      valueHumi = values[configHumi.id].value;
+      valueLed = values[configLed.id].value;
+
+      updateTextMesh2(valueTemp);
+      // await sleep(3000);
+      updateTextMesh3(valueHumi);
+
+      if (newStatusLed !== valueLed) {
+        await updateTextMesh4(valueLed ? "Turn on" : "Turn off");
+        newStatusLed = valueLed;
+        if (valueLed) {
+          screenTV.material.color.set(0xf2f5fa);
+        } else {
+          screenTV.material.color.set(0x233654);
+        }
+      }
+    },
+  });
+  function triggerActionOn() {
+    eraWidget.triggerAction(widgetConfiguration.actions[0].action, null)
+  };
+  function triggerActionOff() {
+    eraWidget.triggerAction(widgetConfiguration.actions[1].action, null)
+  };
+</script>
+
+</html>
